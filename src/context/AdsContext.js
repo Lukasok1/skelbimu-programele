@@ -42,3 +42,14 @@ export function AdsProvider({ children }) {
 export function useAds() {
   return useContext(AdsContext);
 }
+/*
+7 eil.: inicializuoja skelbimų būseną pradiniais duomenimis iš INITIAL_ADS.
+
+8 eil.: saugo paskutinio veiksmo pranešimą (feedback), pagal kurį sąrašo ekrane paleidžiama animacija.
+
+14–21 eil. (addAd): sugeneruoja unikalų id (pagal laiką Date.now()) ir įdeda naują skelbimą į sąrašo pradžią.
+
+23–28 eil. (updateAd): per map() suranda redaguojamą skelbimą pagal id ir pakeičia jį atnaujintais duomenimis.
+
+30–33 eil. (deleteAd): per filter() pašalina skelbimą su nurodytu id iš būsenos.
+*/

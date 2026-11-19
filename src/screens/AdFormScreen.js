@@ -202,3 +202,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+/*
+15–16 eil.: patikrina, ar į ekraną perduotas route.params?.ad; jei taip – įjungia redagavimo režimą (isEditing = true).
+
+21–32 eil.: užpildo formos laukus esamo skelbimo duomenimis (jei redaguojama) arba tuščiomis/pradinėmis reikšmėmis (jei kuriama).
+
+35–54 eil. (validate): patikrina visus 5 privalomus laukus (pavadinimo ilgį, ar kaina yra teigiamas skaičius, ar pasirinkta kategorija, ar nuotraukos nuoroda prasideda http, ir aprašymo ilgį) bei įrašo klaidų tekstus į errors būseną.
+
+56–74 eil. (handleSave): jei validacija sėkminga, suformuoja skelbimo objektą ir iškviečia updateAd (redaguojant) arba addAd (kuriant), po to grįžta atgal.
+
+87, 100, 121, 134, 148 eil.: po kiekvienu įvesties lauku atvaizduoja raudoną klaidos pranešimą, jei vartotojas įvedė neteisingus duomenis. 
+*/

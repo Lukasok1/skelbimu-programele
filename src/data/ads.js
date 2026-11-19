@@ -115,3 +115,9 @@ export const INITIAL_ADS = [
     ],
   },
 ];
+
+/*
+1 eil. (CATEGORIES): aprašo 3 privalomas skelbimų kategorijas (Kompiuteriai, Periferija, Komponentai).
+
+3–122 eil. (INITIAL_ADS): masyvas su 9 pavyzdiniais skelbimais (po 3 kiekvienoje kategorijoje), kur kiekvienas objektas turi id, title, description, price, category ir image.
+*/

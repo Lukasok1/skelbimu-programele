@@ -117,3 +117,12 @@ const styles = StyleSheet.create({
   },
   btnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
 });
+/*14 eil.: iš navigacijos parametrų (route.params) pasiima paspausto skelbimo adId.
+
+16 eil.: nuskaito formatPrice iš ThemeContext (Context API naudojimas 2-ame ekrane – kaina čia irgi keičiasi perjungus valiutą).
+
+18 eil.: suranda konkretų skelbimo objektą sąraše pagal adId.
+
+28–43 eil. (handleDelete): iškviečia sistemos patvirtinimo langą (Alert.alert) su pasirinkimais „Atšaukti“ ir „Šalinti“; patvirtinus iškviečia deleteAd(ad.id) ir grąžina į sąrašą (navigation.goBack()).
+
+75–80 eil.: mygtukas „Redaguoti“, kuris atidaro AdForm ekraną ir perduoda jam esamą ad objektą.*/

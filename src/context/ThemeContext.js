@@ -37,3 +37,17 @@ export function ThemeProvider({ children }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+/*
+3 eil.: sukuria konteksto objektą per createContext().
+
+18 eil.: laiko dabartinės valiutos būseną ('EUR' arba 'USD') per useState.
+
+20–21 eil. (toggleCurrency): perjungia valiutą iš EUR į USD ir atvirkščiai.
+
+23–28 eil. (formatPrice): konvertuoja kainą į dolerius (padaugina iš 1.1) arba palieka eurais ir prideda valiutos ženklą.
+
+30–34 eil.: per <ThemeContext.Provider> išdalina valiutą, keitimo funkciją ir spalvas visiems vidiniams ekranams.
+
+37–39 eil. (useTheme): pagalbinis hook'as, leidžiantis ekranams patogiai nuskaityti šį kontekstą per useContext.
+*/

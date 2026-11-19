@@ -199,3 +199,19 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '600', marginVertical: 4 },
   price: { fontSize: 17, fontWeight: '800' },
 });
+
+/* 17 eil.: nuskaito currency, toggleCurrency ir formatPrice iš ThemeContext (Context API naudojimas 1-ame ekrane).
+
+22–38 eil. (useEffect): paleidžia Animated.sequence animaciją (pranešimo išvažiavimas, 2 sek. pauzė ir išnykimas) kiekvieną kartą, kai pasikeičia feedback (pridėjus, atnaujinus ar ištrynus skelbimą).
+
+40–43 eil. (filteredAds): filtruoja skelbimus pagal pasirinktą kategoriją arba grąžina visus, jei pasirinkta 'Visi'.
+
+52–59 eil.: mygtukas, kuris paspaudus iškviečia toggleCurrency ir keičia valiutą visoje programėlėje.
+
+68–81 eil. (Animated.View): animuota žalios juostos komponento dalis, kuri juda vertikaliai (translateY) ir keičia permatomumą (opacity).
+
+83–105 eil.: sugeneruoja kategorijų filtravimo mygtukus (Visi + 3 kategorijos).
+
+108–114 eil.: rodo pranešimą „Šioje kategorijoje skelbimų nerasta.“, jei po filtravimo nelieka nė vieno įrašo.
+
+116–142 eil. (FlatList): efektyviai atvaizduoja skelbimų korteles su pavadinimu, kategorija, nuotrauka ir pagal kontekstą suformatuota kaina (formatPrice(item.price)). */

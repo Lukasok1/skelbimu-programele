@@ -54,3 +54,9 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
+/*11–44 eil. (RootNavigator): sukuria navigacijos medį su 3 ekranais: sąrašo (AdsList), detalių (AdDetails) ir formos (AdForm).
+
+33–39 eil.: dinamiškai keičia formos ekrano viršutinės juostos pavadinimą – jei perduotas ad objektas, rodo „Redaguoti skelbimą“, jei ne – „Naujas skelbimas“.
+
+46–54 eil. (App): apgaubia visą programėlę ThemeProvider ir AdsProvider, kad bet kuris ekranas galėtų pasiekti valiutą, spalvas ir skelbimų sąrašą. */
