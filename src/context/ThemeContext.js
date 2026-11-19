@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 
 const ThemeContext = createContext();
 
-const lightColors = {
+const colors = {
   background: '#F4F6F9',
   card: '#FFFFFF',
   text: '#1A202C',
@@ -14,26 +14,21 @@ const lightColors = {
   chipBg: '#E2E8F0',
 };
 
-const darkColors = {
-  background: '#0F172A',
-  card: '#1E293B',
-  text: '#F8FAFC',
-  subtext: '#94A3B8',
-  border: '#334155',
-  primary: '#3B82F6',
-  danger: '#EF4444',
-  success: '#22C55E',
-  chipBg: '#334155',
-};
-
 export function ThemeProvider({ children }) {
-  const [isDark, setIsDark] = useState(false);
+  const [currency, setCurrency] = useState('EUR');
 
-  const toggleTheme = () => setIsDark((prev) => !prev);
-  const colors = isDark ? darkColors : lightColors;
+  const toggleCurrency = () =>
+    setCurrency((prev) => (prev === 'EUR' ? 'USD' : 'EUR'));
+
+  const formatPrice = (eurPrice) => {
+    if (currency === 'USD') {
+      return `${Math.round(eurPrice * 1.1)} $`;
+    }
+    return `${eurPrice} €`;
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme, colors }}>
+    <ThemeContext.Provider value={{ currency, toggleCurrency, formatPrice, colors }}>
       {children}
     </ThemeContext.Provider>
   );
