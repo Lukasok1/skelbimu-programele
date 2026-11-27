@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { get, ref, serverTimestamp, set } from 'firebase/database';
 import { auth, db } from '../config/firebase';
 
 const AuthContext = createContext();
@@ -23,7 +23,7 @@ const mapAuthError = (code) => {
     case 'auth/wrong-password':
       return 'Neteisingas el. paštas arba slaptažodis.';
     default:
-      return 'Įvyko autentifikacijos klaida. Bandykite dar kartą.';
+      return `Klaida (${code}): patikrinkite Firebase nustatymus.`;
   }
 };
 
@@ -37,8 +37,8 @@ export function AuthProvider({ children }) {
       setUser(currentUser);
       if (currentUser) {
         try {
-          const snap = await getDoc(doc(db, 'users', currentUser.uid));
-          setProfile(snap.exists() ? snap.data() : { email: currentUser.email });
+          const snap = await get(ref(db, `users/${currentUser.uid}`));
+          setProfile(snap.exists() ? snap.val() : { email: currentUser.email });
         } catch {
           setProfile({ email: currentUser.email });
         }
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
         email: email.trim(),
         createdAt: serverTimestamp(),
       };
-      await setDoc(doc(db, 'users', cred.user.uid), profileData);
+      await set(ref(db, `users/${cred.user.uid}`), profileData);
       setProfile(profileData);
     } catch (err) {
       throw new Error(mapAuthError(err.code));

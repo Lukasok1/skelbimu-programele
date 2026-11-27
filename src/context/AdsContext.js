@@ -1,18 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
+  onValue,
+  push,
+  ref,
+  remove,
   serverTimestamp,
-  updateDoc,
-} from 'firebase/firestore';
+  set,
+  update,
+} from 'firebase/database';
 import { db } from '../config/firebase';
 import { INITIAL_ADS } from '../data/ads';
-import { useAuth } from './Authcontext';
+import { useAuth } from './AuthContext';
 
 const AdsContext = createContext();
 
@@ -28,17 +26,24 @@ export function AdsProvider({ children }) {
   };
 
   useEffect(() => {
-    const q = query(collection(db, 'ads'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(
-      q,
+    const adsRef = ref(db, 'ads');
+    const unsubscribe = onValue(
+      adsRef,
       (snapshot) => {
-        const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAds(list);
+        const data = snapshot.val();
+        if (data) {
+          const list = Object.entries(data)
+            .map(([id, val]) => ({ id, ...val }))
+            .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          setAds(list);
+        } else {
+          setAds([]);
+        }
         setFetchError('');
         setLoading(false);
       },
       (error) => {
-        setFetchError('Nepavyko nuskaityti skelbimų iš duomenų bazės: ' + error.message);
+        setFetchError('Nepavyko nuskaityti skelbimų iš Realtime DB: ' + error.message);
         setLoading(false);
       }
     );
@@ -47,32 +52,33 @@ export function AdsProvider({ children }) {
 
   const addAd = async (newAd) => {
     if (!user) throw new Error('Norėdami kurti skelbimą, turite prisijungti.');
-    await addDoc(collection(db, 'ads'), {
+    const newAdRef = push(ref(db, 'ads'));
+    await set(newAdRef, {
       ...newAd,
       authorId: user.uid,
       authorName: profile?.name || user.email,
       authorEmail: user.email,
       createdAt: serverTimestamp(),
     });
-    triggerFeedback('Skelbimas išsaugotas duomenų bazėje!');
+    triggerFeedback('Skelbimas išsaugotas Realtime DB!');
   };
 
   const updateAd = async (adId, updatedFields) => {
-    await updateDoc(doc(db, 'ads', adId), updatedFields);
+    await update(ref(db, `ads/${adId}`), updatedFields);
     triggerFeedback('Skelbimo duomenys atnaujinti!');
   };
 
   const deleteAd = async (adId) => {
-    await deleteDoc(doc(db, 'ads', adId));
+    await remove(ref(db, `ads/${adId}`));
     triggerFeedback('Skelbimas pašalintas iš duomenų bazės.');
   };
 
-  // Pagalbinė funkcija įkelti 9 pavyzdinius skelbimus į tuščią DB
   const seedInitialAds = async () => {
     if (!user) throw new Error('Prisijunkite, kad įkeltumėte pradinius duomenis.');
     for (const item of INITIAL_ADS) {
       const { id, ...rest } = item;
-      await addDoc(collection(db, 'ads'), {
+      const newAdRef = push(ref(db, 'ads'));
+      await set(newAdRef, {
         ...rest,
         authorId: user.uid,
         authorName: profile?.name || user.email,
@@ -104,14 +110,3 @@ export function AdsProvider({ children }) {
 export function useAds() {
   return useContext(AdsContext);
 }
-/*
-7 eil.: inicializuoja skelbimų būseną pradiniais duomenimis iš INITIAL_ADS.
-
-8 eil.: saugo paskutinio veiksmo pranešimą (feedback), pagal kurį sąrašo ekrane paleidžiama animacija.
-
-14–21 eil. (addAd): sugeneruoja unikalų id (pagal laiką Date.now()) ir įdeda naują skelbimą į sąrašo pradžią.
-
-23–28 eil. (updateAd): per map() suranda redaguojamą skelbimą pagal id ir pakeičia jį atnaujintais duomenimis.
-
-30–33 eil. (deleteAd): per filter() pašalina skelbimą su nurodytu id iš būsenos.
-*/

@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AdsProvider } from './src/context/AdsContext';
-import { AuthProvider } from './src/context/Authcontext';
+import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import AdDetailsScreen from './src/screens/AdDetailsScreen';
 import AdFormScreen from './src/screens/AdFormScreen';
