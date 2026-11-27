@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,19 +20,18 @@ export default function AdFormScreen({ route, navigation }) {
   const { colors } = useTheme();
 
   const [title, setTitle] = useState(existingAd ? existingAd.title : '');
-  const [price, setPrice] = useState(
-    existingAd ? String(existingAd.price) : ''
+  const [price, setPrice] = useState(existingAd ? String(existingAd.price) : '');
+  const [category, setCategory] = useState(existingAd ? existingAd.category : CATEGORIES[0]);
+  const [image1, setImage1] = useState(
+    existingAd?.images?.[0] || existingAd?.image || 'https://picsum.photos/seed/pc1/600/400'
   );
-  const [category, setCategory] = useState(
-    existingAd ? existingAd.category : CATEGORIES[0]
+  const [image2, setImage2] = useState(
+    existingAd?.images?.[1] || 'https://picsum.photos/seed/pc2/600/400'
   );
-  const [image, setImage] = useState(
-    existingAd ? existingAd.image : 'https://picsum.photos/seed/newad/600/400'
-  );
-  const [description, setDescription] = useState(
-    existingAd ? existingAd.description : ''
-  );
+  const [description, setDescription] = useState(existingAd ? existingAd.description : '');
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const validate = () => {
     const nextErrors = {};
@@ -45,8 +45,11 @@ export default function AdFormScreen({ route, navigation }) {
     if (!category) {
       nextErrors.category = 'Pasirinkite kategoriją.';
     }
-    if (!image.trim() || !image.trim().startsWith('http')) {
-      nextErrors.image = 'Įveskite galiojantį nuotraukos URL (http/https).';
+    if (!image1.trim().startsWith('http')) {
+      nextErrors.image1 = 'Įveskite pirmos nuotraukos URL (http/https).';
+    }
+    if (!image2.trim().startsWith('http')) {
+      nextErrors.image2 = 'Įveskite antros nuotraukos URL (http/https).';
     }
     if (!description.trim() || description.trim().length < 10) {
       nextErrors.description = 'Aprašymas turi būti bent 10 simbolių ilgio.';
@@ -55,23 +58,31 @@ export default function AdFormScreen({ route, navigation }) {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
+    setSubmitError('');
+    setSaving(true);
 
     const payload = {
       title: title.trim(),
       price: Number(price),
       category,
-      image: image.trim(),
+      image: image1.trim(),
+      images: [image1.trim(), image2.trim()],
       description: description.trim(),
     };
 
-    if (isEditing) {
-      updateAd({ ...existingAd, ...payload });
-    } else {
-      addAd(payload);
+    try {
+      if (isEditing) {
+        await updateAd(existingAd.id, payload);
+      } else {
+        await addAd(payload);
+      }
+      navigation.goBack();
+    } catch (err) {
+      setSubmitError('Nepavyko išsaugoti duomenų bazėje: ' + err.message);
+      setSaving(false);
     }
-    navigation.goBack();
   };
 
   return (
@@ -79,12 +90,15 @@ export default function AdFormScreen({ route, navigation }) {
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={{ paddingBottom: 32 }}
     >
+      {submitError ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorBoxText}>{submitError}</Text>
+        </View>
+      ) : null}
+
       <Text style={[styles.label, { color: colors.text }]}>Pavadinimas *</Text>
       <TextInput
-        style={[
-          styles.input,
-          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
-        ]}
+        style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
         value={title}
         onChangeText={setTitle}
         placeholder="Pvz., Monitorius ASUS 24"
@@ -94,10 +108,7 @@ export default function AdFormScreen({ route, navigation }) {
 
       <Text style={[styles.label, { color: colors.text }]}>Kaina (€) *</Text>
       <TextInput
-        style={[
-          styles.input,
-          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
-        ]}
+        style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
         value={price}
         onChangeText={setPrice}
         keyboardType="numeric"
@@ -114,10 +125,7 @@ export default function AdFormScreen({ route, navigation }) {
             <TouchableOpacity
               key={cat}
               onPress={() => setCategory(cat)}
-              style={[
-                styles.catChip,
-                { backgroundColor: active ? colors.primary : colors.chipBg },
-              ]}
+              style={[styles.catChip, { backgroundColor: active ? colors.primary : colors.chipBg }]}
             >
               <Text style={{ color: active ? '#FFF' : colors.text, fontWeight: '600' }}>
                 {cat}
@@ -126,54 +134,61 @@ export default function AdFormScreen({ route, navigation }) {
           );
         })}
       </View>
-      {errors.category && <Text style={styles.error}>{errors.category}</Text>}
 
-      <Text style={[styles.label, { color: colors.text }]}>Nuotraukos URL *</Text>
+      <Text style={[styles.label, { color: colors.text }]}>1 nuotraukos URL *</Text>
       <TextInput
-        style={[
-          styles.input,
-          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
-        ]}
-        value={image}
-        onChangeText={setImage}
+        style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+        value={image1}
+        onChangeText={setImage1}
         autoCapitalize="none"
         placeholder="https://..."
         placeholderTextColor={colors.subtext}
       />
-      {errors.image && <Text style={styles.error}>{errors.image}</Text>}
+      {errors.image1 && <Text style={styles.error}>{errors.image1}</Text>}
+
+      <Text style={[styles.label, { color: colors.text }]}>2 nuotraukos URL *</Text>
+      <TextInput
+        style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+        value={image2}
+        onChangeText={setImage2}
+        autoCapitalize="none"
+        placeholder="https://..."
+        placeholderTextColor={colors.subtext}
+      />
+      {errors.image2 && <Text style={styles.error}>{errors.image2}</Text>}
 
       <Text style={[styles.label, { color: colors.text }]}>Aprašymas *</Text>
       <TextInput
-        style={[
-          styles.input,
-          styles.textArea,
-          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
-        ]}
+        style={[styles.input, styles.textArea, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
         value={description}
         onChangeText={setDescription}
         multiline
         placeholder="Išsamus prekės aprašymas..."
         placeholderTextColor={colors.subtext}
       />
-      {errors.description && (
-        <Text style={styles.error}>{errors.description}</Text>
-      )}
+      {errors.description && <Text style={styles.error}>{errors.description}</Text>}
 
       <View style={styles.buttons}>
         <TouchableOpacity
           style={[styles.btn, { backgroundColor: colors.chipBg }]}
           onPress={() => navigation.goBack()}
+          disabled={saving}
         >
           <Text style={{ color: colors.text, fontWeight: '700' }}>Atšaukti</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: colors.primary }]}
+          style={[styles.btn, { backgroundColor: colors.primary, opacity: saving ? 0.7 : 1 }]}
           onPress={handleSave}
+          disabled={saving}
         >
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
-            {isEditing ? 'Išsaugoti pakeitimus' : 'Sukurti skelbimą'}
-          </Text>
+          {saving ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+              {isEditing ? 'Išsaugoti pakeitimus' : 'Sukurti skelbimą'}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -182,25 +197,23 @@ export default function AdFormScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  label: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 6 },
-  input: {
+  errorBox: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
   },
+  errorBoxText: { color: '#B91C1C', fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 6 },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },
   textArea: { height: 100, textAlignVertical: 'top' },
   catRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   catChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20 },
   error: { color: '#DC2626', fontSize: 12, marginTop: 4, fontWeight: '600' },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 24 },
-  btn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  btn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
 });
 /*
 15–16 eil.: patikrina, ar į ekraną perduotas route.params?.ad; jei taip – įjungia redagavimo režimą (isEditing = true).

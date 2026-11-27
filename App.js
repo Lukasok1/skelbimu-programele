@@ -2,10 +2,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AdsProvider } from './src/context/AdsContext';
+import { AuthProvider } from './src/context/Authcontext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import AdDetailsScreen from './src/screens/AdDetailsScreen';
 import AdFormScreen from './src/screens/AdFormScreen';
 import AdsListScreen from './src/screens/AdsListScreen';
+import AuthScreen from './src/screens/AuthScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,10 +37,13 @@ function RootNavigator() {
           name="AdForm"
           component={AdFormScreen}
           options={({ route }) => ({
-            title: route.params?.ad
-              ? 'Redaguoti skelbimą'
-              : 'Naujas skelbimas',
+            title: route.params?.ad ? 'Redaguoti skelbimą' : 'Naujas skelbimas',
           })}
+        />
+        <Stack.Screen
+          name="Auth"
+          component={AuthScreen}
+          options={{ title: 'Paskyra' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
@@ -48,13 +53,14 @@ function RootNavigator() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AdsProvider>
-        <RootNavigator />
-      </AdsProvider>
+      <AuthProvider>
+        <AdsProvider>
+          <RootNavigator />
+        </AdsProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
-
 /*11–44 eil. (RootNavigator): sukuria navigacijos medį su 3 ekranais: sąrašo (AdsList), detalių (AdDetails) ir formos (AdForm).
 
 33–39 eil.: dinamiškai keičia formos ekrano viršutinės juostos pavadinimą – jei perduotas ad objektas, rodo „Redaguoti skelbimą“, jei ne – „Naujas skelbimas“.

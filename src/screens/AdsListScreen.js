@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -9,38 +11,57 @@ import {
   View,
 } from 'react-native';
 import { useAds } from '../context/AdsContext';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { CATEGORIES } from '../data/ads';
 
 export default function AdsListScreen({ navigation }) {
-  const { ads, feedback } = useAds();
+  const { ads, loading, fetchError, feedback, seedInitialAds } = useAds();
+  const { user, profile, logout } = useAuth();
   const { currency, toggleCurrency, formatPrice, colors } = useTheme();
+
   const [selectedCategory, setSelectedCategory] = useState('Visi');
+  const [viewMode, setViewMode] = useState('ALL'); // 'ALL' | 'MINE'
+  const [seeding, setSeeding] = useState(false);
 
   const bannerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!user && viewMode === 'MINE') {
+      setViewMode('ALL');
+    }
+  }, [user, viewMode]);
 
   useEffect(() => {
     if (!feedback) return;
     bannerAnim.setValue(0);
     Animated.sequence([
-      Animated.timing(bannerAnim, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }),
+      Animated.timing(bannerAnim, { toValue: 1, duration: 280, useNativeDriver: true }),
       Animated.delay(2000),
-      Animated.timing(bannerAnim, {
-        toValue: 0,
-        duration: 280,
-        useNativeDriver: true,
-      }),
+      Animated.timing(bannerAnim, { toValue: 0, duration: 280, useNativeDriver: true }),
     ]).start();
   }, [feedback, bannerAnim]);
 
+  const byOwner =
+    viewMode === 'MINE' && user
+      ? ads.filter((ad) => ad.authorId === user.uid)
+      : ads;
+
   const filteredAds =
     selectedCategory === 'Visi'
-      ? ads
-      : ads.filter((ad) => ad.category === selectedCategory);
+      ? byOwner
+      : byOwner.filter((ad) => ad.category === selectedCategory);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      await seedInitialAds();
+    } catch (err) {
+      Alert.alert('Klaida', err.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const bannerTranslateY = bannerAnim.interpolate({
     inputRange: [0, 1],
@@ -49,6 +70,29 @@ export default function AdsListScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Vartotojo būsena ir prisijungimas / atsijungimas */}
+      <View style={[styles.authBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <Text style={{ color: colors.text, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+          {user ? `Sveiki, ${profile?.name || user.email}` : 'Svečias (neprisijungęs)'}
+        </Text>
+        {user ? (
+          <TouchableOpacity
+            style={[styles.smallBtn, { backgroundColor: colors.danger }]}
+            onPress={logout}
+          >
+            <Text style={styles.smallBtnText}>Atsijungti</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.smallBtn, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('Auth')}
+          >
+            <Text style={styles.smallBtnText}>Prisijungti</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Valiuta ir kūrimo mygtukas (tik prisijungus) */}
       <View style={styles.topActions}>
         <TouchableOpacity
           style={[styles.currencyBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -59,13 +103,43 @@ export default function AdsListScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('AdForm')}
-        >
-          <Text style={styles.addBtnText}>+ Naujas skelbimas</Text>
-        </TouchableOpacity>
+        {user && (
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('AdForm')}
+          >
+            <Text style={styles.addBtnText}>+ Naujas skelbimas</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      {/* Visi skelbimai / Mano skelbimai (tik prisijungus) */}
+      {user && (
+        <View style={styles.scopeRow}>
+          <TouchableOpacity
+            style={[
+              styles.scopeBtn,
+              { backgroundColor: viewMode === 'ALL' ? colors.primary : colors.chipBg },
+            ]}
+            onPress={() => setViewMode('ALL')}
+          >
+            <Text style={{ color: viewMode === 'ALL' ? '#FFF' : colors.text, fontWeight: '700' }}>
+              Visi skelbimai
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.scopeBtn,
+              { backgroundColor: viewMode === 'MINE' ? colors.primary : colors.chipBg },
+            ]}
+            onPress={() => setViewMode('MINE')}
+          >
+            <Text style={{ color: viewMode === 'MINE' ? '#FFF' : colors.text, fontWeight: '700' }}>
+              Mano skelbimai
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {feedback && (
         <Animated.View
@@ -83,6 +157,7 @@ export default function AdsListScreen({ navigation }) {
         </Animated.View>
       )}
 
+      {/* Kategorijų filtras */}
       <View style={styles.filterRow}>
         {['Visi', ...CATEGORIES].map((category) => {
           const active = selectedCategory === category;
@@ -109,11 +184,34 @@ export default function AdsListScreen({ navigation }) {
         })}
       </View>
 
-      {filteredAds.length === 0 ? (
+      {/* Krovimo, klaidos arba sąrašo būsena */}
+      {loading ? (
+        <View style={styles.emptyBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.subtext, marginTop: 8 }}>Kraunami skelbimai...</Text>
+        </View>
+      ) : fetchError ? (
+        <View style={styles.emptyBox}>
+          <Text style={{ color: colors.danger, textAlign: 'center', fontWeight: '600' }}>
+            {fetchError}
+          </Text>
+        </View>
+      ) : filteredAds.length === 0 ? (
         <View style={styles.emptyBox}>
           <Text style={[styles.emptyText, { color: colors.subtext }]}>
             Šioje kategorijoje skelbimų nerasta.
           </Text>
+          {ads.length === 0 && user && (
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: colors.primary, marginTop: 14 }]}
+              onPress={handleSeed}
+              disabled={seeding}
+            >
+              <Text style={styles.addBtnText}>
+                {seeding ? 'Įkeliama...' : 'Įkelti 9 pavyzdinius skelbimus į DB'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -128,15 +226,15 @@ export default function AdsListScreen({ navigation }) {
               ]}
               onPress={() => navigation.navigate('AdDetails', { adId: item.id })}
             >
-              <Image source={{ uri: item.image }} style={styles.thumbnail} />
+              <Image
+                source={{ uri: item.images?.[0] || item.image }}
+                style={styles.thumbnail}
+              />
               <View style={styles.cardBody}>
                 <Text style={[styles.categoryTag, { color: colors.primary }]}>
                   {item.category}
                 </Text>
-                <Text
-                  style={[styles.title, { color: colors.text }]}
-                  numberOfLines={2}
-                >
+                <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
                   {item.title}
                 </Text>
                 <Text style={[styles.price, { color: colors.text }]}>
@@ -152,11 +250,22 @@ export default function AdsListScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
+  authBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+    gap: 8,
+  },
+  smallBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
+  smallBtnText: { color: '#FFF', fontWeight: '700', fontSize: 13 },
   topActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   currencyBtn: {
     paddingVertical: 10,
@@ -164,12 +273,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  addBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
+  addBtn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10 },
   addBtnText: { color: '#FFFFFF', fontWeight: '700' },
+  scopeRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  scopeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   toast: {
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -177,15 +284,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   toastText: { color: '#FFFFFF', fontWeight: '700', textAlign: 'center' },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   chip: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 20 },
-  emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 16, fontWeight: '500' },
+  emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  emptyText: { fontSize: 16, fontWeight: '500', textAlign: 'center' },
   card: {
     flexDirection: 'row',
     borderRadius: 12,

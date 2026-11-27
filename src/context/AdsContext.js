@@ -1,39 +1,101 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore';
+import { db } from '../config/firebase';
 import { INITIAL_ADS } from '../data/ads';
+import { useAuth } from './Authcontext';
 
 const AdsContext = createContext();
 
 export function AdsProvider({ children }) {
-  const [ads, setAds] = useState(INITIAL_ADS);
-  const [feedback, setFeedback] = useState(null); // { id: number, text: string }
+  const { user, profile } = useAuth();
+  const [ads, setAds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
+  const [feedback, setFeedback] = useState(null);
 
   const triggerFeedback = (text) => {
     setFeedback({ id: Date.now(), text });
   };
 
-  const addAd = (newAd) => {
-    const created = {
+  useEffect(() => {
+    const q = query(collection(db, 'ads'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAds(list);
+        setFetchError('');
+        setLoading(false);
+      },
+      (error) => {
+        setFetchError('Nepavyko nuskaityti skelbimų iš duomenų bazės: ' + error.message);
+        setLoading(false);
+      }
+    );
+    return unsubscribe;
+  }, []);
+
+  const addAd = async (newAd) => {
+    if (!user) throw new Error('Norėdami kurti skelbimą, turite prisijungti.');
+    await addDoc(collection(db, 'ads'), {
       ...newAd,
-      id: Date.now().toString(),
-    };
-    setAds((prev) => [created, ...prev]);
-    triggerFeedback('Skelbimas sėkmingai pridėtas!');
+      authorId: user.uid,
+      authorName: profile?.name || user.email,
+      authorEmail: user.email,
+      createdAt: serverTimestamp(),
+    });
+    triggerFeedback('Skelbimas išsaugotas duomenų bazėje!');
   };
 
-  const updateAd = (updatedAd) => {
-    setAds((prev) =>
-      prev.map((item) => (item.id === updatedAd.id ? updatedAd : item))
-    );
+  const updateAd = async (adId, updatedFields) => {
+    await updateDoc(doc(db, 'ads', adId), updatedFields);
     triggerFeedback('Skelbimo duomenys atnaujinti!');
   };
 
-  const deleteAd = (id) => {
-    setAds((prev) => prev.filter((item) => item.id !== id));
-    triggerFeedback('Skelbimas pašalintas.');
+  const deleteAd = async (adId) => {
+    await deleteDoc(doc(db, 'ads', adId));
+    triggerFeedback('Skelbimas pašalintas iš duomenų bazės.');
+  };
+
+  // Pagalbinė funkcija įkelti 9 pavyzdinius skelbimus į tuščią DB
+  const seedInitialAds = async () => {
+    if (!user) throw new Error('Prisijunkite, kad įkeltumėte pradinius duomenis.');
+    for (const item of INITIAL_ADS) {
+      const { id, ...rest } = item;
+      await addDoc(collection(db, 'ads'), {
+        ...rest,
+        authorId: user.uid,
+        authorName: profile?.name || user.email,
+        authorEmail: user.email,
+        createdAt: serverTimestamp(),
+      });
+    }
+    triggerFeedback('Įkelta 9 pavyzdiniai skelbimai!');
   };
 
   return (
-    <AdsContext.Provider value={{ ads, addAd, updateAd, deleteAd, feedback }}>
+    <AdsContext.Provider
+      value={{
+        ads,
+        loading,
+        fetchError,
+        addAd,
+        updateAd,
+        deleteAd,
+        seedInitialAds,
+        feedback,
+      }}
+    >
       {children}
     </AdsContext.Provider>
   );
